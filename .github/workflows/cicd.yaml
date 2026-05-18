@@ -53,8 +53,8 @@ jobs:
         run: terraform plan
 
       # Uncomment when ready for real deployment
-      # - name: Terraform Apply
-      #   run: terraform apply -auto-approve
+       - name: Terraform Apply
+         run: terraform apply -auto-approve
 
       # Uncomment after deployment to test destroy
       # - name: Terraform Destroy
