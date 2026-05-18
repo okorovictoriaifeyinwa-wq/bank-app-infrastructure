@@ -1,0 +1,919 @@
+# Query: v
+# ContextLines: 1
+
+513 results - 40 files
+
+.gitignore:
+  2  .terraform
+  3: *.tfstate.env 
+  4: .env
+
+01-provider.tf:
+   1: # provider "aws" {
+   2  #   region = "us-east-1"
+
+   6  terraform {
+   7:   required_providers {
+   8      godaddy-dns = {
+   9:       source = "veksh/godaddy-dns"
+  10:       version = "0.3.12"
+  11      }
+
+  13        source = "hashicorp/aws"
+  14:       version = "6.0.0-beta2"
+  15      }
+
+  17        source  = "hashicorp/helm"
+  18:       version = "~> 2.10" # Or any version < 2.11
+  19      }
+
+  23  
+  24: provider "godaddy-dns" {
+  25    api_key    = "better set it in GODADDY_API_KEY"
+
+  27  }
+  28: provider "aws" {
+  29    region = "us-east-1"
+
+ClusterIssuer.yaml:
+   2  # =====================================================================
+   3: apiVersion: cert-manager.io/v1
+   4  kind: ClusterIssuer
+
+   8    acme:
+   9:     server: https://acme-v02.api.letsencrypt.org/directory
+  10      email: support@digitalwitchng.online
+  11:     privateKeySecretRef:
+  12        name: letsencrypt-prod-cluster-issuer
+  13:     solvers:
+  14      - http01:
+
+example-app.yaml:
+   1: apiVersion: apps/v1
+   2  kind: Deployment
+
+  18        - name: nginx
+  19:         image: smartcloud2022/edu:v1
+  20          ports:
+
+  22  ---
+  23: apiVersion: v1
+  24: kind: Service
+  25  metadata:
+  26:   name: nginx-service
+  27  spec:
+
+  35  ---
+  36: apiVersion: networking.k8s.io/v1
+  37  kind: Ingress
+
+  56          backend:
+  57:           service:
+  58:             name: nginx-service
+  59              port:
+
+ingress-argocd.yaml:
+   1: apiVersion: networking.k8s.io/v1
+   2  kind: Ingress
+
+  22          backend:
+  23:           service:
+  24:             name: argocd-server
+  25              port:
+
+main.tf:
+   1: # Creating a VPC and EKS cluster using Terraform
+   2: module "vpc-deployment" {
+   3:     source = "./module-vpc"
+   4:     environment = var.environment
+   5:     vpc_cidrblock = var.vpc_cidrblock
+   6:     countsub = var.countsub
+   7:     create_subnet = var.create_subnet
+   8:     create_elastic_ip = var.create_elastic_ip
+   9    
+
+  12  #creating an EKS cluster using Terraform
+  13: # and deploying it in the VPC created above
+  14  module "eks-deployment" {
+
+  16      
+  17:     environment = var.environment
+  18:     vpc_cidrblock = var.vpc_cidrblock
+  19:     countsub = var.countsub
+  20:     create_subnet = var.create_subnet
+  21:     create_elastic_ip = var.create_elastic_ip
+  22:     desired_size = var.desired_size
+  23:     max_size = var.max_size
+  24:     min_size = var.min_size
+  25:     instance_types = var.instance_types
+  26:     capacity_type = var.capacity_type
+  27:     public_subnet_ids  = module.vpc-deployment.public_subnet_ids
+  28:     private_subnet_ids = module.vpc-deployment.private_subnet_ids
+  29:     cluster_name = var.cluster_name
+  30:     repository_name = var.repository_name
+  31:     domain-name = var.domain-name
+  32:     email = var.email
+  33    
+
+  37      source = "./module-dns"
+  38:     environment = var.environment
+  39:     domain-name = var.domain-name
+  40      nginx_lb_ip = module.eks-deployment.nginx_lb_ip
+
+  47      source = "./module-database"
+  48:     environment = var.environment
+  49:     db_instance_class = var.db_instance_class
+  50:     db_allocated_storage = var.db_allocated_storage
+  51:     private_subnet_db_ids = module.vpc-deployment.private_subnet_db_ids
+  52:     db_name =  var.db_name
+  53:     db_password = var.db_password
+  54:     db_username = var.db_username
+  55:     aws_security_group_ids = module.vpc-deployment.aws_security_group_ids
+  56  }
+
+readme.MD:
+   2  
+   3: This repository contains the infrastructure-as-code (IaC) setup using **Terraform** to deploy a complete AWS environment, including VPC, EKS (Kubernetes), RDS database, and DNS. The deployment is automated using **GitHub Actions**.
+   4  
+   5  ---
+   6: ## For DNS correction for both goodday or namecheap whichever one you are using.
+   7  ## ===============================================================================
+
+   9  
+  10: ### step (1) first after deploying this infrastructure to aws everything will be created.
+  11: ### step (2) AWS Route 53 hosted zone will be created. However, due to issue with bannd in namecheap and godaddy, that you must have 50 domains before you use their API. that is why i have updated this so you can do that part mannually. 
+  12: ### step (3) Check AWS route53 hosted zone nameservers. and copy them to namecheap or godaddy and update it.
+  13  
+  14: ### check this video for namecheap
+  15: ### check this video for godaddy.
+  16  
+  17: ### step (4) After updating the nameserver in the selected alterneting domain provider, you wait for 10 minutes, then 
+  18: ### step (5) uncomment the .github/workflow/cicd.yaml line [70-83] and push it back to run the pipeline again by this time. the domain have been populated and certmanager and nginx will be able to make use of it. 
+  19  
+  20: ### If you still have issue on this, let me know by sending a screenshot of all the steps.
+  21: ## Good luck on your project, I love you all.
+  22  
+
+  34  ├── module-eks/                # Terraform module to deploy an EKS cluster
+  35: ├── module-vpc/                # Terraform module to provision VPC and networking
+  36: ├── .terraform.lock.hcl        # Provider and dependency lock file
+  37  ├── .tflint.hcl                # Linting configuration for Terraform
+  38: ├── 01-provider.tf             # AWS provider configuration
+  39  ├── backend.tf                 # Remote state configuration (e.g., Terraform Cloud/S3)
+
+  43  ├── readme.MD                  # You are here
+  44: ├── terraform.tfvars           # Variable values
+  45: └── variable.tf                # Variable definitions.
+  46  ```
+
+terraform.tfvars:
+   1: environment = "production"
+   2: vpc_cidrblock = "192.168.0.0/16"
+   3  countsub = 2
+
+  12  label_one = "system-nodepool"
+  13: eks_version = "1.32"
+  14  domain-name = "cloudwitches.online"
+
+variable.tf:
+    1: variable "vpc_cidrblock" {
+    2:   description = "CIDR block for the VPC"
+    3    type        = string
+
+    7  
+    8: variable "environment" {
+    9:   description = "Environment name (e.g., dev, staging, prod)"
+   10    type        = string
+
+   14  
+   15: variable "create_subnet" {
+   16    description = "Flag to create a subnet"
+
+   20  
+   21: variable "countsub" {
+   22    description = "Number of subnets to create"
+
+   26  }
+   27: variable "create_elastic_ip" {
+   28    description = "Flag to create Elastic IPs"
+
+   33  
+   34: variable "desired_size" {
+   35    description = "Desired size of the EKS node group"
+
+   39  
+   40: variable "max_size" {
+   41    description = "Maximum size of the EKS node group"
+
+   45  
+   46: variable "min_size" {
+   47    description = "Minimum size of the EKS node group"
+
+   51  
+   52: variable "instance_types" {
+   53    description = "Instance types for the EKS node group"
+
+   57  
+   58: variable "capacity_type" {
+   59    description = "Capacity type for the EKS node group"
+
+   62  }
+   63: variable "eks_version" {
+   64:   description = "EKS cluster version"
+   65    type        = string
+
+   67  }
+   68: variable "ami_type" {
+   69    description = "AMI type for the EKS node group"
+
+   73  
+   74: variable "label_one" {
+   75    description = "Label for the EKS node group"
+
+   79  
+   80: variable "zone_name" {
+   81    description = "Name of the DNS zone"
+
+   85  
+   86: variable "domain-name" {
+   87    description = "Domain name to be created"
+
+   91  
+   92: variable "namecheap_api_user" {
+   93    description = "Namecheap API user"
+
+   96  }
+   97: variable "namecheap_api_key" {
+   98    description = "Namecheap API key"
+
+  101  }
+  102: variable "namecheap_username" {
+  103    description = "Namecheap username"
+
+  106  }
+  107: variable "namecheap_client_ip" {
+  108    description = "Client IP for Namecheap API access"
+
+  114  
+  115: variable "db_instance_class" {
+  116    description = "Instance class for the RDS database"
+
+  120  
+  121: variable "db_allocated_storage" {
+  122    description = "Storage allocated to the DB instance (in GB)"
+
+  126  
+  127: # variable "db_subnet_group_name" {
+  128  #   description = "Name of the DB subnet group"
+
+  132  
+  133: variable "db_username" {
+  134    description = "Username for the database"
+
+  138  
+  139: variable "db_password" {
+  140    description = "Password for the database"
+
+  142    default     = "password123"
+  143:   sensitive   = true
+  144  }
+  145  
+  146: variable "db_name" {
+  147    description = "Database name"
+
+  150  }
+  151: variable "cluster_name" {
+  152    description = "The name of the EKS cluster"
+
+  156  
+  157: variable "repository_name" {
+  158    description = "Name of the ECR repository"
+
+  163  
+  164: variable "email" {
+  165    description = "Email address for notifications and certificates"
+
+.github/workflows/cicd.yaml:
+  14      runs-on: self-hosted
+  15:     env:
+  16        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+  21        - name: Checkout repository
+  22:         uses: actions/checkout@v2
+  23  
+  24        - name: Configure AWS credentials
+  25:         uses: aws-actions/configure-aws-credentials@v4
+  26          with:
+
+  31        - name: Setup Terraform
+  32:         uses: hashicorp/setup-terraform@v1
+  33  
+
+  35          run: |
+  36:           curl -sLo tfsec https://github.com/aquasecurity/tfsec/releases/download/v1.28.11/tfsec-linux-amd64
+  37            chmod +x tfsec
+  38:           ./tfsec --version
+  39  
+
+  45  
+  46:       - name: Terraform Validate
+  47:         run: terraform validate
+  48  
+
+  56        # - name: Terraform Apply
+  57:       #   run: terraform apply -auto-approve
+  58  
+
+  60        # - name: Terraform Destroy
+  61:       #   run: terraform destroy -auto-approve
+  62  
+
+  67        #     chmod +x ./kubectl
+  68:       #     sudo mv ./kubectl /usr/local/bin/kubectl
+  69  
+  70        # - name: Authenticate to EKS Cluster
+  71:       #   run: aws eks update-kubeconfig --name ${{ vars.EKS_CLUSTER_NAME }} --region us-east-1
+  72  
+
+docker-git-runner-setup/docker-compose.yaml:
+   1: version: "3.8"
+   2  
+   3: services:
+   4    github-runner:
+
+  11      restart: unless-stopped
+  12:     env_file:
+  13:       - .env
+  14:     volumes:
+  15:       - /var/run/docker.sock:/var/run/docker.sock
+  16        - runner-work:/home/runner/_work
+  17  
+  18: volumes:
+  19    runner-work:
+
+docker-git-runner-setup/Dockerfile:
+   2  
+   3: # Avoid interactive prompts during apt install
+   4: ENV DEBIAN_FRONTEND=noninteractive
+   5  
+
+  17      ca-certificates && \
+  18:     rm -rf /var/lib/apt/lists/*
+  19  
+
+  26  
+  27: # Install Node.js (LTS version)
+  28  RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+
+module-database/mysql.tf:
+   2  resource "aws_db_subnet_group" "mysql_subnet_group" {
+   3:   name       = "${var.environment}-mysql-subnet-group"
+   4:   subnet_ids = var.private_subnet_db_ids
+   5    tags = {
+   6:     Name        = "${var.environment}-mysql-subnet-group"
+   7:     Environment = var.environment
+   8    }
+
+  10  resource "aws_db_instance" "mysql_db_instance" {
+  11:   identifier              = "${var.environment}-mysql-db"
+  12    engine                  = "mysql"
+  13:   engine_version          = "8.0"
+  14:   instance_class          = var.db_instance_class
+  15:   allocated_storage       = var.db_allocated_storage
+  16    storage_type            = "gp2"
+  17    db_subnet_group_name    = aws_db_subnet_group.mysql_subnet_group.name
+  18:   vpc_security_group_ids  = [var.aws_security_group_ids]
+  19:   username                = var.db_username
+  20:   password                = var.db_password
+  21:   db_name                 = var.db_name
+  22    skip_final_snapshot     = true
+
+  24    tags = {
+  25:     Name        = "${var.environment}-mysql-db-instance"
+  26:     Environment = var.environment
+  27    }
+
+module-database/variables.tf:
+   1: variable "environment" {
+   2:   description = "Deployment environment name"
+   3    type        = string
+
+   5  
+   6: variable "db_instance_class" {
+   7    description = "Instance class for the RDS database"
+
+  10  
+  11: variable "db_allocated_storage" {
+  12    description = "Storage allocated to the DB instance (in GB)"
+
+  15  
+  16: # variable "db_subnet_group_name" {
+  17  #   description = "Name of the DB subnet group"
+
+  20  
+  21: variable "db_username" {
+  22    description = "Username for the database"
+
+  25  
+  26: variable "db_password" {
+  27    description = "Password for the database"
+  28    type        = string
+  29:   sensitive   = true
+  30  }
+  31  
+  32: variable "db_name" {
+  33    description = "Database name"
+
+  36  
+  37: variable "aws_security_group_ids" {
+  38    description = "List of security group IDs for the database"
+
+  40  }
+  41: variable "private_subnet_db_ids" {
+  42:   description = "List of private subnet IDs for the database"
+  43    type        = list(string)
+
+module-dns/output.tf:
+  1: output "route53_name_servers" {
+  2:     description = "The name servers of the Route 53 hosted zone"
+  3:     value       = aws_route53_zone.r53_zone.name_servers
+  4  }
+
+module-dns/r52-hosted-zone.tf:
+   1  resource "aws_route53_zone" "r53_zone" {
+   2:     name = var.domain-name
+   3      comment = "Managed by Terraform"
+
+   6      tags = {
+   7:         Name        = "${var.environment}-hosted-zone"
+   8:         Environment = var.environment
+   9      }
+
+  12      zone_id = aws_route53_zone.r53_zone.zone_id
+  13:     name    = "bank.${var.domain-name}" # Use a subdomain for CNAME
+  14      type    = "CNAME"
+  15      ttl     = 300
+  16:     records = [var.nginx_lb_ip]
+  17  }
+
+  20      zone_id = aws_route53_zone.r53_zone.zone_id
+  21:     name    = "bankapi.${var.domain-name}" # Use a subdomain for CNAME
+  22      type    = "CNAME"
+  23      ttl     = 300
+  24:     records = [var.nginx_lb_ip]
+  25  }
+
+  27      zone_id = aws_route53_zone.r53_zone.zone_id
+  28:     name    = "argocd.${var.domain-name}" # Use a subdomain for CNAME
+  29      type    = "CNAME"
+  30      ttl     = 300
+  31:     records = [var.nginx_lb_ip]
+  32  }
+
+module-dns/variables.tf:
+   1: variable "environment" {}
+   2: variable "domain-name" {}
+   3: variable "nginx_ingress_lb_dns" {
+   4    description = "DNS name of the NGINX Ingress Load Balancer"
+
+   7  }
+   8: variable "nginx_lb_ip" {
+   9    description = "IP address of the NGINX Ingress Load Balancer"
+
+  11  }
+  12: variable "nginx_ingress_load_balancer_hostname" {
+  13    description = "Hostname of the NGINX Ingress Load Balancer"
+
+module-eks/addons.tf:
+   1: provider "helm" {
+   2      kubernetes {
+
+   8  
+   9: provider "kubernetes" {
+  10    alias                  = "eks"
+
+  22      chart      = "ingress-nginx"
+  23:     version    = "4.12.0"
+  24      namespace  = "ingress-nginx"
+
+  26  
+  27:     values = [file("${path.module}/nginx-ingress-values.yaml")]
+  28      depends_on = [ aws_eks_node_group.eks_node_group ]
+
+  32    tags = {
+  33:     "kubernetes.io/service-name" = "ingress-nginx/nginx-ingress-ingress-nginx-controller"
+  34    }
+
+  42      chart      = "cert-manager"
+  43:     version    = "1.14.5"
+  44      namespace  = "cert-manager"
+
+  47          name  = "installCRDs"
+  48:         value = "true"
+  49      }
+
+  57      chart            = "argo-cd"
+  58:     version          = "5.51.6"
+  59      namespace        = "argocd"
+  60      create_namespace = true
+  61:     values = [file("${path.module}/argocd-values.yaml")]
+  62      depends_on = [ helm_release.nginx_ingress, helm_release.cert_manager]
+
+module-eks/argocd-values.yaml:
+  1: server:
+  2    extraArgs:
+
+module-eks/eks-node-group.tf:
+   2    cluster_name    = aws_eks_cluster.eks.id
+   3:   node_group_name = "${var.environment}-eks-node-group"
+   4    node_role_arn   = aws_iam_role.eks_node_group_role.arn
+   5:   subnet_ids = concat(var.public_subnet_ids, var.private_subnet_ids)
+   6:   version         = var.eks_version
+   7:   capacity_type   = var.capacity_type
+   8:   ami_type = var.ami_type 
+   9    scaling_config {
+  10:     desired_size = var.desired_size
+  11:     max_size     = var.max_size
+  12:     min_size     = var.min_size
+  13    }
+  14    
+  15:   instance_types = var.instance_types
+  16    labels = {
+  17:     role = var.label_one
+  18:     environment = var.environment
+  19    }
+
+  21    tags = {
+  22:     Name        = "${var.environment}-eks-node-group"
+  23:     Environment = var.environment
+  24    }
+
+module-eks/eks-node-groups-role.tf:
+   1  resource "aws_iam_role" "eks_node_group_role" {
+   2:   name = "${var.environment}-eks-node_group-role"
+   3  
+   4    assume_role_policy = jsonencode({
+   5:     Version = "2012-10-17"
+   6      Statement = [
+
+  10          Principal = {
+  11:           Service = "ec2.amazonaws.com"
+  12          }
+
+  17    tags = {
+  18:     Name        = "${var.environment}-eks-node_group-role"
+  19:     Environment = var.environment
+  20    }
+
+module-eks/eks-role.tf:
+   3  resource "aws_iam_role" "eks_cluster_role" {
+   4:   name = "${var.environment}-eks-cluster-role"
+   5  
+   6    assume_role_policy = jsonencode({
+   7:     Version = "2012-10-17"
+   8      Statement = [
+
+  12          Principal = {
+  13:           Service = "eks.amazonaws.com"
+  14          }
+
+  18      tags = {
+  19:     Name        = "${var.environment}-eks-cluster-role"
+  20:     Environment = var.environment
+  21    }
+
+  28  }
+  29: ## Attach the AmazonEKSVPCResourceController policy to the EKS cluster role
+  30: resource "aws_iam_role_policy_attachment" "eks_vpc_resource_controller_policy" {
+  31    role       = aws_iam_role.eks_cluster_role.name
+  32:   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
+  33  }
+
+module-eks/eks.tf:
+   1  resource "aws_eks_cluster" "eks" {
+   2:     name     = "${var.environment}-${var.cluster_name}"
+   3      role_arn = aws_iam_role.eks_cluster_role.arn
+   4:     version  = var.eks_version
+   5:     vpc_config {
+   6:         subnet_ids = concat(var.public_subnet_ids, var.private_subnet_ids)
+   7          endpoint_public_access  = true
+   8:         endpoint_private_access = true
+   9      }
+
+  12          aws_iam_role_policy_attachment.eks_cluster_policy,
+  13:         aws_iam_role_policy_attachment.eks_vpc_resource_controller_policy
+  14      ]
+  15      tags = {
+  16:         Name        = "${var.environment}-${var.cluster_name}"
+  17:         Environment = var.environment
+  18      }
+
+module-eks/nginx-ingress-values.yaml:
+   4      name: external-nginx
+   5:   service:
+   6      enabled: true
+   7      annotations:
+   8:       service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+   9:       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+  10:       service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+  11        
+
+module-eks/output.tf:
+  1  output "nginx_ingress_lb_dns" {
+  2:   value = data.aws_lb.nginx_ingress.dns_name
+  3  }
+
+  5  output "nginx_lb_ip" {
+  6:   value = data.aws_lb.nginx_ingress.ip_address_type == "ipv4" ? data.aws_lb.nginx_ingress.dns_name : ""
+  7  }
+  8  output "nginx_ingress_load_balancer_hostname" {
+  9:   value = data.aws_lb.nginx_ingress.dns_name
+  10  }
+
+module-eks/variables.tf:
+   1: variable "vpc_cidrblock" {
+   2:   description = "CIDR block for the VPC"
+   3    type        = string
+
+   7  
+   8: variable "environment" {
+   9:   description = "Environment name (e.g., dev, staging, prod)"
+  10    type        = string
+
+  14  
+  15: variable "create_subnet" {
+  16    description = "Flag to create a subnet"
+
+  20  
+  21: variable "countsub" {
+  22    description = "Number of subnets to create"
+
+  26  }
+  27: variable "create_elastic_ip" {
+  28    description = "Flag to create Elastic IPs"
+
+  32  
+  33: variable "desired_size" {
+  34    description = "Desired size of the EKS node group"
+
+  38  
+  39: variable "max_size" {
+  40    description = "Maximum size of the EKS node group"
+
+  44  
+  45: variable "min_size" {
+  46    description = "Minimum size of the EKS node group"
+
+  50  
+  51: variable "instance_types" {
+  52    description = "Instance types for the EKS node group"
+
+  56  
+  57: variable "capacity_type" {
+  58    description = "Capacity type for the EKS node group"
+
+  61  }
+  62: variable "eks_version" {
+  63:   description = "EKS cluster version"
+  64    type        = string
+
+  66  }
+  67: variable "ami_type" {
+  68    description = "AMI type for the EKS node group"
+
+  72  
+  73: variable "label_one" {
+  74    description = "Label for the EKS node group"
+
+  78  
+  79: # variable "subnet_ids" {
+  80  #   type = list(string)
+  81  # }
+  82: variable "public_subnet_ids" {
+  83    type = list(string)
+  84  }
+  85: variable "private_subnet_ids" {
+  86    type = list(string)
+  87:   description = "List of private subnet IDs"
+  88  }
+  89: variable "cluster_name" {
+  90  }
+  91  
+  92: variable "repository_name" {
+  93    
+
+  95  
+  96: variable "domain-name" {}
+  97: variable "email" {}
+
+module-vpc/02-vpc.tf:
+  1: resource "aws_vpc" "vpc-main" {
+  2:   cidr_block       = var.vpc_cidrblock
+  3    instance_tenancy = "default"
+
+  5    enable_dns_hostnames = true
+  6:   assign_generated_ipv6_cidr_block = false
+  7    tags = {
+  8:     Name = "${var.environment}-vpc"
+  9:     Environment = var.environment
+  10    }
+
+module-vpc/03-igt.tf:
+  1  resource "aws_internet_gateway" "gw" {
+  2:   vpc_id = aws_vpc.vpc-main.id
+  3  
+  4    tags = {
+  5:     Name = "${var.environment}-internet-gateway"
+  6:     Environment = var.environment
+  7    }
+
+module-vpc/04-public_subnet.tf:
+   1: #  This file defines the public subnets for the VPC.
+   2  
+   3: # available zones
+   4  #================
+   5: data "aws_availability_zones" "available" {
+   6:   state = "available"
+   7  }
+
+  11  resource "aws_subnet" "public_subnet" {
+  12:     count      = var.create_subnet ? var.countsub : 0
+  13:     vpc_id     = aws_vpc.vpc-main.id
+  14:     availability_zone = data.aws_availability_zones.available.names[count.index]
+  15      cidr_block = "192.168.${count.index}.0/24"
+
+  18      tags = {
+  19:         Name = "${var.environment}-public-subnet-${count.index + 1}-${data.aws_availability_zones.available.names[count.index]}"
+  20:         Environment = var.environment
+  21          "kubernetes.io/cluster/eks" = "1"
+  22          "kubernetes.io/role/elb" = "1"
+  23:         "kubernetes.io/cluster/${var.environment}-${var.cluster_name}" = "owned"
+  24      }
+
+module-vpc/05-private_subnets.tf:
+   1: # private Subnet Configuration
+   2  #============================
+   3: resource "aws_subnet" "private_subnet" {
+   4:     count      = var.create_subnet ? var.countsub : 0
+   5:     vpc_id     = aws_vpc.vpc-main.id
+   6:     availability_zone = data.aws_availability_zones.available.names[count.index]
+   7      cidr_block = "192.168.${count.index + 3}.0/24"
+
+  10      tags = {
+  11:         Name = "${var.environment}-private-subnet-${count.index + 1}-${data.aws_availability_zones.available.names[count.index]}"
+  12:         Environment = var.environment
+  13          "kubernetes.io/cluster/eks" = "shared"
+  14          "kubernetes.io/role/internal-elb" = "1"
+  15:         "kubernetes.io/cluster/${var.environment}-${var.cluster_name}" = "owned"
+  16      }
+
+module-vpc/06-elp.tf:
+  1  resource "aws_eip" "elastic-ip" {
+  2:     count = var.create_elastic_ip ? var.countsub : 0
+  3      tags = {
+  4:         Name = "${var.environment}-elastic-ip-nat-gateway-${count.index + 1}"
+  5:         Environment = var.environment
+  6      }
+
+module-vpc/07-nat-gateway.tf:
+  1  resource "aws_nat_gateway" "name" {
+  2:     count = var.create_elastic_ip ? var.countsub : 0
+  3      allocation_id = aws_eip.elastic-ip[count.index].id
+
+  5      tags = {
+  6:         Name = "${var.environment}-nat-gateway-${count.index + 1}"
+  7:         Environment = var.environment
+  8      }
+
+module-vpc/08-private-route-table.tf:
+   1: resource "aws_route_table" "private_route_table" {
+   2:   count = true ? var.countsub : 0
+   3:   vpc_id = aws_vpc.vpc-main.id
+   4  
+   5    tags = {
+   6:     Name = "${var.environment}-private-route-table-${count.index + 1}"
+   7:     Environment = var.environment
+   8    }
+
+  10  
+  11: resource "aws_route" "private_route" {
+  12:   count = true ? var.countsub : 0
+  13:   route_table_id = aws_route_table.private_route_table[count.index].id
+  14    destination_cidr_block = "0.0.0.0/0"
+
+module-vpc/09-public-route-table.tf:
+   1: # get the default route table for the VPC
+   2  data "aws_route_table" "default-route-table" {
+   3:   vpc_id = aws_vpc.vpc-main.id
+   4    filter {
+   5      name   = "association.main"
+   6:     values = ["true"]
+   7    }
+
+  12    key         = "Name"
+  13:   value       = "${var.environment}-public-route-table"
+  14  }
+  15: # associate the default route table with the VPC
+  16  resource "aws_main_route_table_association" "main" {
+  17:   vpc_id         = aws_vpc.vpc-main.id
+  18    route_table_id = data.aws_route_table.default-route-table.id
+
+module-vpc/10-public-route-associate.tf:
+  1  resource "aws_route_table_association" "public_route_table_association" {
+  2:   count = true ? var.countsub : 0
+  3    subnet_id      = aws_subnet.public_subnet[count.index].id
+
+module-vpc/11-private-route-associate.tf:
+   1: resource "aws_route_table_association" "private_route_association" {
+   2:   count = true ? var.countsub : 0
+   3:   subnet_id      = aws_subnet.private_subnet[count.index].id
+   4:   route_table_id = aws_route_table.private_route_table[count.index].id
+   5  
+
+   9  
+  10: resource "aws_route_table_association" "private_route_association_db" {
+  11:   count = true ? var.countsub : 0
+  12:   subnet_id      = aws_subnet.private_subnet_db[count.index].id
+  13:   route_table_id = aws_route_table.private_route_table[count.index].id
+  14  
+
+module-vpc/12-private-subnet-db.tf:
+   1: # private Subnet Configuration
+   2  #============================
+   3: resource "aws_subnet" "private_subnet_db" {
+   4:     count      = var.create_subnet ? var.countsub : 0
+   5:     vpc_id     = aws_vpc.vpc-main.id
+   6:     availability_zone = data.aws_availability_zones.available.names[count.index]
+   7      cidr_block = "192.168.${count.index + 5}.0/24"
+
+  10      tags = {
+  11:         Name = "${var.environment}-private-subnet-db-${count.index + 1}-${data.aws_availability_zones.available.names[count.index]}"
+  12:         Environment = var.environment
+  13          "kubernetes.io/cluster/eks" = "shared"
+  14          "kubernetes.io/role/internal-elb" = "1"
+  15:         "kubernetes.io/cluster/${var.environment}-${var.cluster_name}" = "owned"
+  16      }
+
+module-vpc/13-mysql-sg.tf:
+   1  resource "aws_security_group" "mysql_sg" {
+   2:   name        = "${var.environment}-mysql-sg"
+   3    description = "Security group for MySQL database"
+   4:   vpc_id      = aws_vpc.vpc-main.id
+   5  
+
+   9      protocol    = "tcp"
+  10:     cidr_blocks = ["${var.vpc_cidrblock}"]
+  11    }
+
+module-vpc/output.tf:
+   1: output "vpc_id" {
+   2:   description = "The ID of the VPC"
+   3:   value       = aws_vpc.vpc-main.id
+   4:   sensitive = true
+   5    
+
+   7  
+   8: output "private_subnet_ids" {
+   9:   description = "List of private subnet IDs"
+  10:   value       = aws_subnet.private_subnet[*].id
+  11  }
+
+  13    description = "List of public subnet IDs"
+  14:   value       = aws_subnet.public_subnet[*].id
+  15  }
+
+  17  
+  18: output "private_subnet_db_ids" {
+  19:   description = "List of private subnet IDs"
+  20:   value       = aws_subnet.private_subnet_db[*].id
+  21  }
+
+  24    description = "List of security group IDs"
+  25:   value       = aws_security_group.mysql_sg.id
+  26    
+
+module-vpc/variables.tf:
+   1: variable "vpc_cidrblock" {
+   2:   description = "CIDR block for the VPC"
+   3    type        = string
+
+   7  
+   8: variable "environment" {
+   9:   description = "Environment name (e.g., dev, staging, prod)"
+  10    type        = string
+
+  14  
+  15: variable "create_subnet" {
+  16    description = "Flag to create a subnet"
+
+  20  
+  21: variable "countsub" {
+  22    description = "Number of subnets to create"
+
+  26  }
+  27: variable "create_elastic_ip" {
+  28    description = "Flag to create Elastic IPs"
+
+  31  }
+  32: variable "cluster_name" {
+  33    description = "Name of the EKS cluster"
