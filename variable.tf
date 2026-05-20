@@ -165,4 +165,9 @@ variable "email" {
   description = "Email address for notifications and certificates"
   type        = string
   default     = "support@digitalwitchng.online"
+
+variable "domain_name" {
+  description = "Domain name"
+  type        = string
+
 }
