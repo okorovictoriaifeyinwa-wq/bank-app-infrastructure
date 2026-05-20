@@ -166,8 +166,4 @@ variable "email" {
   type        = string
   default     = "support@digitalwitchng.online"
 
-variable "domain_name" {
-  description = "support@digitalwitchng.online"
-  type        = string
-
 }
