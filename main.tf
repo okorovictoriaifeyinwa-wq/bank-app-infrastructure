@@ -37,9 +37,9 @@ module "dns-deployment" {
     source = "./module-dns"
     environment = var.environment
     domain_name = var.domain_name
-    nginx_lb_ip = module.eks-deployment.nginx_lb_ip
-    nginx_ingress_load_balancer_hostname = module.eks-deployment.nginx_ingress_load_balancer_hostname
-    nginx_ingress_lb_dns = module.eks-deployment.nginx_ingress_lb_dns
+#    nginx_lb_ip = module.eks-deployment.nginx_lb_ip
+#    nginx_ingress_load_balancer_hostname = module.eks-deployment.nginx_ingress_load_balancer_hostname
+#    nginx_ingress_lb_dns = module.eks-deployment.nginx_ingress_lb_dns
   
 }
 
